@@ -19,6 +19,9 @@ import {
   timeoutErrorHandler,
 } from "./middleware/timeout";
 
+import { register } from "./utils/metrics";
+import { metricsMiddleware } from "./middleware/metrics";
+
 dotenv.config();
 
 const app = express();
@@ -31,10 +34,21 @@ const limiter = rateLimit({
 });
 
 // Middleware
+app.use(metricsMiddleware); // Register metrics middleware early
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(limiter);
+
+// Prometheus metrics endpoint
+app.get("/metrics", async (req, res) => {
+  try {
+    res.set("Content-Type", register.contentType);
+    res.end(await register.metrics());
+  } catch (err) {
+    res.status(500).end(err);
+  }
+});
 
 // Basic health check
 app.get("/health", (req, res) => {
